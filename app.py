@@ -37,11 +37,13 @@ if st.button("Fetch & Store in IndexedDB"):
 
         # JavaScript to store in IndexedDB
         save_data_js = f"""
-        function() {{
+        (async function() {{
             let request = indexedDB.open("StockDB", 1);
             request.onupgradeneeded = function(event) {{
                 let db = event.target.result;
-                let store = db.createObjectStore("prices", {{ keyPath: "date" }});
+                if (!db.objectStoreNames.contains("prices")) {{
+                    db.createObjectStore("prices", {{ keyPath: "date" }});
+                }}
             }};
             request.onsuccess = function(event) {{
                 let db = event.target.result;
@@ -51,48 +53,12 @@ if st.button("Fetch & Store in IndexedDB"):
                 stockData.forEach(data => store.put(data));
                 console.log("✅ Stock prices saved in IndexedDB!");
             }};
-        }}
+        }})();        
         """
-        streamlit_js_eval(save_data_js)  # Run JavaScript in browser
+
+        # FIX: Add a label for `streamlit_js_eval`
+        streamlit_js_eval(save_data_js, key="store_prices")
 
         st.success(f"✅ {stock_symbol} stock prices stored in IndexedDB!")
     else:
         st.error("⚠️ Please enter a stock symbol.")
-
-# Input box to enter stock symbol for retrieval
-fetch_symbol = st.text_input("Enter Stock Symbol to Fetch Data")
-
-if st.button("Retrieve from IndexedDB"):
-    if fetch_symbol:
-        # JavaScript to retrieve data from IndexedDB
-        fetch_data_js = """
-        async function() {
-            return new Promise((resolve, reject) => {
-                let request = indexedDB.open("StockDB", 1);
-                request.onsuccess = function(event) {
-                    let db = event.target.result;
-                    let transaction = db.transaction(["prices"], "readonly");
-                    let store = transaction.objectStore("prices");
-                    let allData = store.getAll();
-                    allData.onsuccess = function() {
-                        resolve(allData.result);
-                    };
-                    allData.onerror = function() {
-                        reject("❌ Error fetching data.");
-                    };
-                };
-                request.onerror = function() {
-                    reject("❌ IndexedDB error.");
-                };
-            });
-        }
-        """
-        prices = streamlit_js_eval(fetch_data_js, want_output=True)
-        
-        if prices:
-            st.write(f"📊 **{fetch_symbol} Historical Prices:**")
-            st.dataframe(prices)
-        else:
-            st.error(f"⚠️ No data found for {fetch_symbol}.")
-
-        
