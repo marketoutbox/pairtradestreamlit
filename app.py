@@ -7,7 +7,7 @@ def get_stock_data(symbol, start, end):
     return data[['Close']].reset_index()
 
 # Streamlit UI
-st.title("Stock Price Data (2021-202d4)")
+st.title("Stock Price Data (2021-2024)")
 
 # User input for stock symbol
 symbol = st.text_input("Enter Stock Symbol:", "AAPL")
