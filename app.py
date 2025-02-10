@@ -7,7 +7,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Pair Trading App", layout="wide")
 st.title("📈 Pair Trading with IndexedDB")
 
-# ✅ Custom JS for IndexedDB communication
+# ✅ JavaScript for IndexedDB storage and retrieval
 indexeddb_js = """
 <script>
 function saveStockPrice(symbol, priceData) {
@@ -44,3 +44,83 @@ function saveStockPrice(symbol, priceData) {
             console.log("✅ Data saved successfully:", stockEntry);
             alert("✅ Data saved successfully for " + symbol);
         };
+        putRequest.onerror = function() {
+            console.error("❌ Failed to save data:", putRequest.error);
+        };
+    };
+
+    request.onerror = function(event) {
+        console.error("❌ Failed to open IndexedDB:", event.target.error);
+    };
+}
+
+function fetchStockPrice(symbol) {
+    let request = indexedDB.open("StockDB", 1);
+
+    request.onsuccess = function(event) {
+        let db = event.target.result;
+
+        if (!db.objectStoreNames.contains("prices")) {
+            console.error("❌ Object store 'prices' not found.");
+            alert("⚠️ No data found in IndexedDB.");
+            return;
+        }
+
+        let transaction = db.transaction(["prices"], "readonly");
+        let store = transaction.objectStore("prices");
+
+        let getRequest = store.get(symbol);
+
+        getRequest.onsuccess = function() {
+            if (getRequest.result) {
+                console.log("📊 Data fetched:", getRequest.result);
+                alert("📊 Data for " + symbol + ":\n" + JSON.stringify(getRequest.result.prices, null, 2));
+            } else {
+                console.error("⚠️ No data found for", symbol);
+                alert("⚠️ No data found for " + symbol);
+            }
+        };
+
+        getRequest.onerror = function() {
+            console.error("❌ Failed to fetch data:", getRequest.error);
+        };
+    };
+
+    request.onerror = function(event) {
+        console.error("❌ Failed to open IndexedDB:", event.target.error);
+    };
+}
+</script>
+"""
+
+# ✅ Render JavaScript for IndexedDB
+components.html(indexeddb_js, height=0)
+
+# ✅ **Step 1: Fetch & Store Stock Prices**
+st.subheader("📥 Fetch & Store Stock Prices")
+symbol = st.text_input("Enter stock symbol (e.g., AAPL)", key="fetch_symbol")
+if st.button("Fetch & Store Prices"):
+    if symbol:
+        try:
+            stock = yf.Ticker(symbol)
+            hist = stock.history(period="2y")[["Close"]]
+            hist.reset_index(inplace=True)
+
+            # ✅ Convert timestamps to strings
+            hist["Date"] = hist["Date"].astype(str)
+
+            price_data = hist.values.tolist()  # Convert DataFrame to List
+            json_data = json.dumps(price_data)  # Convert to JSON
+
+            # ✅ Run JavaScript to store in IndexedDB
+            st.components.v1.html(f"<script>saveStockPrice('{symbol}', {json_data})</script>", height=0)
+        except Exception as e:
+            st.error(f"❌ Error fetching data: {e}")
+
+# ✅ **Step 2: Retrieve Stock Prices**
+st.subheader("📤 Fetch Stored Stock Prices")
+symbol_fetch = st.text_input("Enter symbol to fetch data", key="retrieve_symbol")
+if st.button("Retrieve Prices"):
+    if symbol_fetch:
+        # ✅ Run JavaScript to fetch from IndexedDB
+        st.components.v1.html(f"<script>fetchStockPrice('{symbol_fetch}')</script>", height=0)
