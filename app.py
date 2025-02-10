@@ -4,7 +4,8 @@ import pandas as pd
 
 def get_stock_data(symbol, start, end):
     data = yf.download(symbol, start=start, end=end)
-    return data[['Date', 'Close']].reset_index()
+    data = data.reset_index()  # Ensure 'Date' is a separate column
+    return data[['Date', 'Close']]
 
 # Streamlit UI
 st.title("Stock Price Data (2021-2024)")
