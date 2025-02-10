@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
-from streamlit_js_eval import streamlit_js_eval
 import json
+from streamlit_js_eval import streamlit_js_eval
 
 st.title("📈 Pair Trading with Yahoo Finance + IndexedDB")
 
@@ -10,15 +10,15 @@ def fetch_yahoo_data(stock_symbol):
     stock = yf.Ticker(stock_symbol)
     df = stock.history(period="2y")
     df.reset_index(inplace=True)
+
+    # Convert 'Date' column to string format and 'Close' to float
+    df['date'] = df['Date'].dt.strftime('%Y-%m-%d')  # Ensure date is a string
+    df['price'] = df['Close'].astype(float)  # Ensure price is a float
     
-    # Convert 'Date' column to string format
-    df['Date'] = df['Date'].astype(str)
-    
-    df = df[['Date', 'Close']]
-    df.columns = ['date', 'price']
-    df['symbol'] = stock_symbol  # Add symbol column
-    
-    return df.to_dict(orient="records")  # Convert to JSON format
+    df = df[['date', 'price']]
+    df['symbol'] = stock_symbol  # Add stock symbol
+
+    return df.to_dict(orient="records")  # Convert DataFrame to a list of dictionaries
 
 # User input for stock symbols
 stock1 = st.text_input("Enter Stock 1 (e.g., AAPL)")
@@ -28,15 +28,16 @@ if st.button("Fetch & Store Data"):
     if stock1 and stock2:
         data1 = fetch_yahoo_data(stock1)
         data2 = fetch_yahoo_data(stock2)
-        
+
         combined_data = data1 + data2  # Merge stock data
-        
+
         try:
-            json_data = json.dumps(combined_data)  # Convert to JSON
+            json_data = json.dumps(combined_data, indent=2)  # Convert to JSON with debugging
         except TypeError as e:
-            st.error(f"Error in JSON conversion: {e}")
+            st.error(f"⚠️ JSON Serialization Error: {e}")
+            st.write(combined_data)  # Show problematic data
             st.stop()
-        
+
         # JavaScript function to store in IndexedDB
         save_data_js = f"""
         function() {{
@@ -56,28 +57,3 @@ if st.button("Fetch & Store Data"):
         st.success("✅ Stock prices saved in IndexedDB!")
     else:
         st.error("⚠️ Please enter two stock symbols.")
-
-st.subheader("📊 Retrieve Data from IndexedDB")
-if st.button("Load Data from IndexedDB"):
-    load_data_js = """
-    async function() {
-        return new Promise((resolve) => {
-            let request = indexedDB.open("StockDB", 1);
-            request.onsuccess = function(event) {
-                let db = event.target.result;
-                let transaction = db.transaction(["prices"], "readonly");
-                let store = transaction.objectStore("prices");
-                let request = store.getAll();
-                request.onsuccess = function() {
-                    resolve(request.result);
-                };
-            };
-        });
-    }
-    """
-    data = streamlit_js_eval(load_data_js, want_output=True)
-    if data:
-        st.write("📈 Loaded Data from IndexedDB:")
-        st.dataframe(data)
-    else:
-        st.warning("⚠️ No data found in IndexedDB.")
