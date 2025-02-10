@@ -11,8 +11,7 @@ def fetch_yahoo_data(stock_symbol):
     df = stock.history(period="2y")  # Get last 2 years of data
     df.reset_index(inplace=True)
 
-    # Convert Date to string and Price to float
-    df['date'] = df['Date'].dt.strftime('%Y-%m-%d')  # Ensure date is a string
+    df['date'] = df['Date'].dt.strftime('%Y-%m-%d')  # Convert date to string
     df['price'] = df['Close'].astype(float)  # Ensure price is a float
     
     df = df[['date', 'price']]
@@ -20,20 +19,23 @@ def fetch_yahoo_data(stock_symbol):
 
     return df.to_dict(orient="records")  # Convert DataFrame to list of dicts
 
-# Input box to enter stock symbol
+# Input box for stock symbol
 stock_symbol = st.text_input("Enter Stock Symbol (e.g., AAPL)")
 
 if st.button("Fetch & Store in IndexedDB"):
     if stock_symbol:
         data = fetch_yahoo_data(stock_symbol)
 
-        # Convert to JSON
+        # Convert data to JSON
         try:
-            json_data = json.dumps(data, indent=2)  # Convert to JSON
+            json_data = json.dumps(data, indent=2)
         except TypeError as e:
             st.error(f"JSON Error: {e}")
             st.write(data)  # Debugging
             st.stop()
+
+        # FIX: Use a valid label as the first argument
+        streamlit_js_eval(js_expressions="1+1", key="validate_js")  # Dummy JS check
 
         # JavaScript to store in IndexedDB
         save_data_js = f"""
@@ -56,8 +58,8 @@ if st.button("Fetch & Store in IndexedDB"):
         }})();        
         """
 
-        # FIX: Add a label for `streamlit_js_eval`
-        streamlit_js_eval(save_data_js, key="store_prices")
+        # FIX: Pass JS as second argument with a label
+        streamlit_js_eval(js_expressions=save_data_js, key="store_prices")
 
         st.success(f"✅ {stock_symbol} stock prices stored in IndexedDB!")
     else:
