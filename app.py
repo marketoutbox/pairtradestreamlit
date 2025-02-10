@@ -22,29 +22,37 @@ if st.button("Run"):
 
     # Inject JavaScript to store data in IndexedDB
     st.components.v1.html(f"""
-        <script>
-        const dbName = "StockDB";
-        const storeName = "prices";
+<script>
+const dbName = "StockDB";
+const storeName = "prices";
 
-        function storeData() {{
-            let dbRequest = indexedDB.open(dbName, 1);
-            dbRequest.onupgradeneeded = function(event) {{
-                let db = event.target.result;
-                if (!db.objectStoreNames.contains(storeName)) {{
-                    db.createObjectStore(storeName, {{ keyPath: "Date" }});
-                }}
-            }};
+function storeData(stockData) {
+    let dbRequest = indexedDB.open(dbName, 1);
 
-            dbRequest.onsuccess = function(event) {{
-                let db = event.target.result;
-                let transaction = db.transaction(storeName, "readwrite");
-                let store = transaction.objectStore(storeName);
-                
-                let stockData = {stock_data_json};
-                stockData.forEach(item => store.put(item));
-            }};
-        }}
+    dbRequest.onupgradeneeded = function(event) {
+        let db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: "Date" });
+        }
+    };
 
-        storeData();
-        </script>
+    dbRequest.onsuccess = function(event) {
+        let db = event.target.result;
+        let transaction = db.transaction(storeName, "readwrite");
+        let store = transaction.objectStore(storeName);
+
+        stockData.forEach(item => store.put(item));
+
+        console.log("Data stored successfully in IndexedDB");
+    };
+
+    dbRequest.onerror = function(event) {
+        console.error("IndexedDB error:", event.target.error);
+    };
+}
+
+// Trigger data storage
+storeData({stock_data_json});
+</script>
+
     """, height=0)
