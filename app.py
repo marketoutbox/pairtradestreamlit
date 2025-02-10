@@ -8,11 +8,16 @@ st.title("📈 Pair Trading with Yahoo Finance + IndexedDB")
 # Function to fetch stock price data from Yahoo Finance
 def fetch_yahoo_data(stock_symbol):
     stock = yf.Ticker(stock_symbol)
-    df = stock.history(period="2y")  # Get last 2 years of data
+    df = stock.history(period="2y")
     df.reset_index(inplace=True)
-    df = df[['Date', 'Close']]  # Keep only Date & Close Price
+    
+    # Convert 'Date' column to string format
+    df['Date'] = df['Date'].astype(str)
+    
+    df = df[['Date', 'Close']]
     df.columns = ['date', 'price']
     df['symbol'] = stock_symbol  # Add symbol column
+    
     return df.to_dict(orient="records")  # Convert to JSON format
 
 # User input for stock symbols
@@ -25,7 +30,12 @@ if st.button("Fetch & Store Data"):
         data2 = fetch_yahoo_data(stock2)
         
         combined_data = data1 + data2  # Merge stock data
-        json_data = json.dumps(combined_data)  # Convert to JSON
+        
+        try:
+            json_data = json.dumps(combined_data)  # Convert to JSON
+        except TypeError as e:
+            st.error(f"Error in JSON conversion: {e}")
+            st.stop()
         
         # JavaScript function to store in IndexedDB
         save_data_js = f"""
