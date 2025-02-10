@@ -1,0 +1,4 @@
+streamlit
+yfinance
+streamlit_js_eval
+pandas
