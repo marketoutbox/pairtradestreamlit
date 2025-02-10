@@ -1,12 +1,11 @@
 import streamlit as st
 import yfinance as yf
 from streamlit_js_eval import streamlit_js_eval
-import pandas as pd
 import json
 
 st.title("📈 Pair Trading with Yahoo Finance + IndexedDB")
 
-# Function to fetch Yahoo Finance data
+# Function to fetch stock price data from Yahoo Finance
 def fetch_yahoo_data(stock_symbol):
     stock = yf.Ticker(stock_symbol)
     df = stock.history(period="2y")  # Get last 2 years of data
@@ -16,7 +15,7 @@ def fetch_yahoo_data(stock_symbol):
     df['symbol'] = stock_symbol  # Add symbol column
     return df.to_dict(orient="records")  # Convert to JSON format
 
-# User selects stock symbols
+# User input for stock symbols
 stock1 = st.text_input("Enter Stock 1 (e.g., AAPL)")
 stock2 = st.text_input("Enter Stock 2 (e.g., MSFT)")
 
@@ -25,7 +24,7 @@ if st.button("Fetch & Store Data"):
         data1 = fetch_yahoo_data(stock1)
         data2 = fetch_yahoo_data(stock2)
         
-        combined_data = data1 + data2  # Merge both stock data
+        combined_data = data1 + data2  # Merge stock data
         json_data = json.dumps(combined_data)  # Convert to JSON
         
         # JavaScript function to store in IndexedDB
@@ -38,6 +37,7 @@ if st.button("Fetch & Store Data"):
                 let store = transaction.objectStore("prices");
                 let stockData = {json_data};
                 stockData.forEach(data => store.put(data));
+                console.log("✅ Stock prices saved in IndexedDB!");
             }};
         }}
         """
@@ -46,3 +46,28 @@ if st.button("Fetch & Store Data"):
         st.success("✅ Stock prices saved in IndexedDB!")
     else:
         st.error("⚠️ Please enter two stock symbols.")
+
+st.subheader("📊 Retrieve Data from IndexedDB")
+if st.button("Load Data from IndexedDB"):
+    load_data_js = """
+    async function() {
+        return new Promise((resolve) => {
+            let request = indexedDB.open("StockDB", 1);
+            request.onsuccess = function(event) {
+                let db = event.target.result;
+                let transaction = db.transaction(["prices"], "readonly");
+                let store = transaction.objectStore("prices");
+                let request = store.getAll();
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+            };
+        });
+    }
+    """
+    data = streamlit_js_eval(load_data_js, want_output=True)
+    if data:
+        st.write("📈 Loaded Data from IndexedDB:")
+        st.dataframe(data)
+    else:
+        st.warning("⚠️ No data found in IndexedDB.")
